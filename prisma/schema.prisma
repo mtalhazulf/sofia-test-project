@@ -1,8 +1,8 @@
-// AW Client Report Portal — Prisma schema
+// AW Client Report Portal - Prisma schema
 // SRS §5 data model. Money stored as BigInt cents.
 //
 // Stack note: SQLite for V1 dev (no external DB needed). To switch to Postgres
-// for production, change `provider` to "postgresql" and `DATABASE_URL` — the
+// for production, change `provider` to "postgresql" and `DATABASE_URL` - the
 // schema is provider-portable (no native enums; all amounts are BigInt).
 
 generator client {
@@ -10,7 +10,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

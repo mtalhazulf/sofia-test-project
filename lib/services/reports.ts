@@ -62,7 +62,7 @@ export async function generateReportsForSnapshot(snapshotId: string, actorId: st
       balanceCents: cents,
     };
   });
-  // Trust-only accounts may have no balance entry — pull purely from snapshot_trust_value
+  // Trust-only accounts may have no balance entry - pull purely from snapshot_trust_value
   for (const t of snap.trustValues) {
     if (snap.balances.find((b) => b.accountId === t.accountId)) continue;
     const acct = accountById.get(t.accountId);
@@ -90,15 +90,34 @@ export async function generateReportsForSnapshot(snapshotId: string, actorId: st
   const period = `Q${snap.fiscalQuarter} ${snap.fiscalYear}`;
   const preparedDate = new Date().toISOString().slice(0, 10);
 
+  const cashByAccount = new Map(
+    snap.balances.map((b) => [b.accountId, b.cashBalanceCents]),
+  );
   const accountDisplay = (accountId: string, balanceCents: bigint): TccAccountDisplay => {
     const a = accountById.get(accountId)!;
     return {
       label: a.displayLabel || ACCOUNT_TYPE_LABELS[a.type as AccountType],
       last4: a.accountNumberLast4,
       balanceCents,
+      cashBalanceCents: cashByAccount.get(accountId) ?? null,
       rateBps: a.interestRateBps,
+      propertyAddress: a.propertyAddress ?? null,
     };
   };
+
+  const ageOf = (dob: Date) => {
+    const now = new Date();
+    let age = now.getUTCFullYear() - dob.getUTCFullYear();
+    const m = now.getUTCMonth() - dob.getUTCMonth();
+    if (m < 0 || (m === 0 && now.getUTCDate() < dob.getUTCDate())) age--;
+    return age;
+  };
+  const personInfo = (p: { firstName: string; lastName: string; dateOfBirth: Date; ssnLast4: string }) => ({
+    name: `${p.firstName} ${p.lastName}`,
+    dateOfBirthIso: p.dateOfBirth.toISOString().slice(0, 10),
+    age: ageOf(p.dateOfBirth),
+    ssnLast4: p.ssnLast4,
+  });
 
   const spouseAccounts = (personId: string) =>
     tccBalances
@@ -134,13 +153,13 @@ export async function generateReportsForSnapshot(snapshotId: string, actorId: st
     preparedDate,
     chart: {
       spouse1: {
-        name: `${spouse1.firstName} ${spouse1.lastName}`,
+        info: personInfo(spouse1),
         retirementCents: tcc.spouse1RetirementCents,
         accounts: spouseAccounts(spouse1.id),
       },
       spouse2: spouse2
         ? {
-            name: `${spouse2.firstName} ${spouse2.lastName}`,
+            info: personInfo(spouse2),
             retirementCents: tcc.spouse2RetirementCents,
             accounts: spouseAccounts(spouse2.id),
           }

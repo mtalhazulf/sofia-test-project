@@ -1,4 +1,4 @@
-// Money helpers. Internal representation is BigInt cents — never floats.
+// Money helpers. Internal representation is BigInt cents - never floats.
 
 const CENTS_PER_DOLLAR = 100n;
 

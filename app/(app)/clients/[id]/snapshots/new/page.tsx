@@ -1,9 +1,11 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ChevronRight } from "lucide-react";
 import { auth } from "@/auth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHeader, Section } from "@/components/ui/section";
 import { createSnapshot } from "@/lib/services/snapshots";
 import { createSnapshotSchema } from "@/lib/validators";
 
@@ -29,30 +31,69 @@ export default function NewSnapshotPage({ params }: { params: { id: string } }) 
   const q = Math.floor(today.getMonth() / 3) + 1;
 
   return (
-    <form action={submit} className="max-w-md space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">New Quarterly Snapshot</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle>Period</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-1">
+    <form action={submit} className="space-y-8 max-w-2xl">
+      <PageHeader
+        breadcrumb={
+          <span className="inline-flex items-center gap-1.5">
+            <Link href="/clients" className="hover:text-ink transition-colors">
+              Clients
+            </Link>
+            <ChevronRight className="h-3.5 w-3.5 text-ink-faint" />
+            <Link
+              href={`/clients/${params.id}`}
+              className="hover:text-ink transition-colors"
+            >
+              File
+            </Link>
+            <ChevronRight className="h-3.5 w-3.5 text-ink-faint" />
+            <span className="text-ink">New snapshot</span>
+          </span>
+        }
+        title="New quarterly snapshot"
+        description="Open a draft snapshot, then enter balances, valuations, and cash-flow figures."
+      />
+
+      <Section title="Period">
+        <div className="border border-line rounded-md bg-surface px-4 sm:px-5 py-5 space-y-4">
+          <div className="space-y-1.5">
             <Label htmlFor="meetingDate">Meeting date</Label>
-            <Input id="meetingDate" name="meetingDate" type="date" defaultValue={today.toISOString().slice(0, 10)} required />
+            <Input
+              id="meetingDate"
+              name="meetingDate"
+              type="date"
+              defaultValue={today.toISOString().slice(0, 10)}
+              required
+            />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
               <Label htmlFor="fiscalYear">Fiscal year</Label>
               <Input id="fiscalYear" name="fiscalYear" type="number" defaultValue={year} required />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="fiscalQuarter">Fiscal quarter (1–4)</Label>
-              <Input id="fiscalQuarter" name="fiscalQuarter" type="number" min={1} max={4} defaultValue={q} required />
+            <div className="space-y-1.5">
+              <Label htmlFor="fiscalQuarter">Fiscal quarter</Label>
+              <Input
+                id="fiscalQuarter"
+                name="fiscalQuarter"
+                type="number"
+                min={1}
+                max={4}
+                defaultValue={q}
+                required
+              />
             </div>
           </div>
-          <Button type="submit">Create draft snapshot</Button>
-        </CardContent>
-      </Card>
+        </div>
+      </Section>
+
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <Button type="submit" variant="primary" className="w-full sm:w-auto">
+          Create draft snapshot
+        </Button>
+        <Button asChild variant="ghost" className="w-full sm:w-auto">
+          <Link href={`/clients/${params.id}`}>Cancel</Link>
+        </Button>
+      </div>
     </form>
   );
 }

@@ -30,7 +30,7 @@ export async function renderSacsHtml(args: {
             </div>
             <div className="meta-row">
               <span className="meta-label">Deductibles included</span>
-              <span className="meta-value">{args.insuranceDeductiblesNote || "—"}</span>
+              <span className="meta-value">{args.insuranceDeductiblesNote || "-"}</span>
             </div>
             {args.schwabInvestmentBalanceText ? (
               <div className="meta-row">
@@ -41,9 +41,9 @@ export async function renderSacsHtml(args: {
           </section>
           <footer>
             <span>Prepared {args.preparedDate}</span>
-            <span>Confidential — Windbrook Solutions</span>
+            <span> - Windbrook Solutions</span>
             <span className="watermark">
-              V1 layout — approximate; pending source-template parity sign-off
+              V1 layout - approximate; pending source-template parity sign-off
             </span>
           </footer>
         </main>

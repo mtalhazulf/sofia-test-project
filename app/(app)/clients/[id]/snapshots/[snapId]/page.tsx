@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getSnapshot } from "@/lib/services/snapshots";
+import { getSnapshot, getPriorSnapshot } from "@/lib/services/snapshots";
 import { fromCents } from "@/lib/math/money";
 import { SnapshotEditor, type EditorAccount } from "@/components/snapshot/Editor";
 import type { AccountCategory, AccountType } from "@/lib/constants";
@@ -12,6 +12,7 @@ type SnapshotPageParams = { id: string; snapId: string };
 export default async function SnapshotPage({ params }: { params: SnapshotPageParams }) {
   const snap = await getSnapshot(params.snapId);
   if (!snap || snap.clientId !== params.id) notFound();
+  const prior = await getPriorSnapshot(params.snapId);
 
   const profile = snap.client.staticProfile;
   const deductibles = profile
@@ -26,6 +27,7 @@ export default async function SnapshotPage({ params }: { params: SnapshotPagePar
     ownerPersonId: a.ownerPersonId ?? null,
     accountNumberLast4: a.accountNumberLast4,
     interestRateBps: a.interestRateBps,
+    propertyAddress: a.propertyAddress,
   }));
 
   const balances: Record<string, { balance: string; cashBalance?: string }> = {};
@@ -49,6 +51,33 @@ export default async function SnapshotPage({ params }: { params: SnapshotPagePar
     balances,
     trustValues,
   };
+
+  const previous = prior
+    ? {
+        period: `Q${prior.fiscalQuarter} ${prior.fiscalYear}`,
+        inflowCents: prior.cashflow ? fromCents(prior.cashflow.inflowCents) : null,
+        outflowCents: prior.cashflow ? fromCents(prior.cashflow.outflowCents) : null,
+        privateReserveBalanceCents: prior.cashflow
+          ? fromCents(prior.cashflow.privateReserveBalanceCents)
+          : null,
+        schwabInvestmentBalanceCents: prior.cashflow?.schwabInvestmentBalanceCents
+          ? fromCents(prior.cashflow.schwabInvestmentBalanceCents)
+          : null,
+        balances: Object.fromEntries(
+          prior.balances.map((b) => [
+            b.accountId,
+            {
+              balance: fromCents(b.balanceCents),
+              cashBalance:
+                b.cashBalanceCents != null ? fromCents(b.cashBalanceCents) : null,
+            },
+          ]),
+        ) as Record<string, { balance: string; cashBalance: string | null }>,
+        trustValues: Object.fromEntries(
+          prior.trustValues.map((t) => [t.accountId, fromCents(t.zillowValueCents)]),
+        ) as Record<string, string>,
+      }
+    : null;
 
   return (
     <div className="space-y-6">
@@ -85,10 +114,13 @@ export default async function SnapshotPage({ params }: { params: SnapshotPagePar
           spouseIndex: p.spouseIndex,
           firstName: p.firstName,
           lastName: p.lastName,
+          dateOfBirth: p.dateOfBirth.toISOString(),
+          ssnLast4: p.ssnLast4,
         }))}
         accounts={editorAccounts}
         deductibleCents={deductibles.map((d) => d.amountCents)}
         initial={initial}
+        previous={previous}
       />
     </div>
   );

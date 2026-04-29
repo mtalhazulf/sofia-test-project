@@ -1,80 +1,109 @@
 import Link from "next/link";
+import { Plus, ArrowRight } from "lucide-react";
 import { listClients } from "@/lib/services/clients";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader, StatGrid, Stat } from "@/components/ui/section";
 import { format } from "date-fns";
 
 export default async function ClientsPage() {
   const clients = await listClients();
+  const finalized = clients.filter((c) => c.snapshots[0]?.status === "FINALIZED").length;
+  const draft = clients.filter((c) => c.snapshots[0]?.status === "DRAFT").length;
+  const dormant = clients.filter((c) => c.snapshots.length === 0).length;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Clients</h1>
-          <p className="text-sm text-muted-foreground">
-            {clients.length} household{clients.length === 1 ? "" : "s"} on file
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/clients/new">New Client</Link>
-        </Button>
-      </div>
+      <PageHeader
+        title="Clients"
+        description="Households under stewardship and their most recent quarterly snapshot."
+        action={
+          <Button asChild variant="primary">
+            <Link href="/clients/new">
+              <Plus className="h-4 w-4" />
+              New client
+            </Link>
+          </Button>
+        }
+      />
 
-      <Card>
-        <CardContent className="p-0">
-          <table className="w-full text-sm">
-            <thead className="border-b bg-slate-50 text-left">
+      <StatGrid>
+        <Stat label="Total" value={clients.length.toString().padStart(2, "0")} />
+        <Stat label="Finalized" value={finalized.toString().padStart(2, "0")} hint="Most recent snapshot" />
+        <Stat label="In draft" value={draft.toString().padStart(2, "0")} hint="Awaiting finalization" />
+        <Stat label="No snapshot" value={dormant.toString().padStart(2, "0")} hint="Households without a quarter" />
+      </StatGrid>
+
+      {clients.length === 0 ? (
+        <div className="border border-dashed border-line rounded-md py-16 text-center bg-surface">
+          <p className="text-[0.875rem] text-ink-mute">No clients yet.</p>
+          <Button asChild variant="primary" size="sm" className="mt-4">
+            <Link href="/clients/new">
+              <Plus className="h-4 w-4" />
+              Create your first client
+            </Link>
+          </Button>
+        </div>
+      ) : (
+        <div className="border border-line rounded-md bg-surface overflow-hidden animate-fade-up">
+          <div className="table-scroll">
+          <table className="data-table">
+            <thead>
               <tr>
-                <th className="p-4 font-medium">Household</th>
-                <th className="p-4 font-medium">Persons</th>
-                <th className="p-4 font-medium">Accounts</th>
-                <th className="p-4 font-medium">Last meeting</th>
-                <th className="p-4 font-medium">Status</th>
-                <th className="p-4" />
+                <th className="w-[36%]">Household</th>
+                <th>Persons</th>
+                <th className="text-right">Accounts</th>
+                <th>Last meeting</th>
+                <th>Status</th>
+                <th aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
-              {clients.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                    No clients yet. <Link href="/clients/new" className="text-primary underline">Create your first client.</Link>
-                  </td>
-                </tr>
-              ) : null}
               {clients.map((c) => {
                 const last = c.snapshots[0];
+                const personNames = c.persons
+                  .map((p) => `${p.firstName} ${p.lastName}`)
+                  .join(" & ");
                 return (
-                  <tr key={c.id} className="border-b last:border-b-0">
-                    <td className="p-4 font-medium">
-                      <Link href={`/clients/${c.id}`} className="hover:underline">
-                        {c.householdName}
-                      </Link>
-                    </td>
-                    <td className="p-4 text-muted-foreground">
-                      {c.persons.map((p) => `${p.firstName} ${p.lastName}`).join(" & ")}
-                    </td>
-                    <td className="p-4 text-muted-foreground">{c._count.accounts}</td>
-                    <td className="p-4 text-muted-foreground">
-                      {last ? format(last.meetingDate, "PP") : "—"}
-                    </td>
-                    <td className="p-4">
-                      {last ? (
-                        last.status === "FINALIZED" ? (
-                          <Badge variant="success">Q{last.fiscalQuarter} {last.fiscalYear} finalized</Badge>
-                        ) : (
-                          <Badge variant="warning">Q{last.fiscalQuarter} {last.fiscalYear} draft</Badge>
-                        )
-                      ) : (
-                        <Badge variant="outline">No snapshots</Badge>
-                      )}
-                    </td>
-                    <td className="p-4 text-right">
+                  <tr key={c.id}>
+                    <td>
                       <Link
                         href={`/clients/${c.id}`}
-                        className="text-sm text-primary hover:underline"
+                        className="block hover:text-brand transition-colors"
                       >
-                        Open →
+                        <span className="font-medium text-ink">{c.householdName}</span>
+                        <span className="block text-[0.75rem] text-ink-mute mt-0.5 num">
+                          ID&nbsp;·&nbsp;{c.id.slice(-8).toUpperCase()}
+                        </span>
+                      </Link>
+                    </td>
+                    <td className="text-ink-mute">{personNames}</td>
+                    <td className="text-right num text-ink">{c._count.accounts}</td>
+                    <td className="text-ink-mute num">
+                      {last ? format(last.meetingDate, "MMM d, yyyy") : "-"}
+                    </td>
+                    <td>
+                      {last ? (
+                        last.status === "FINALIZED" ? (
+                          <Badge variant="success">
+                            Q{last.fiscalQuarter} {last.fiscalYear} · Final
+                          </Badge>
+                        ) : (
+                          <Badge variant="warning">
+                            Q{last.fiscalQuarter} {last.fiscalYear} · Draft
+                          </Badge>
+                        )
+                      ) : (
+                        <Badge variant="outline">No snapshot</Badge>
+                      )}
+                    </td>
+                    <td className="text-right">
+                      <Link
+                        href={`/clients/${c.id}`}
+                        className="inline-flex items-center gap-1 text-[0.8125rem] text-ink-mute hover:text-brand transition-colors group"
+                      >
+                        Open
+                        <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                       </Link>
                     </td>
                   </tr>
@@ -82,8 +111,9 @@ export default async function ClientsPage() {
               })}
             </tbody>
           </table>
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

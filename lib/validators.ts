@@ -98,6 +98,48 @@ export const createClientSchema = z
   });
 export type CreateClientInput = z.infer<typeof createClientSchema>;
 
+// Edit-existing-account: identified by id; type/category/owner are immutable
+// because historical snapshots reference these accounts.
+export const accountEditSchema = z.object({
+  id: z.string().min(1),
+  displayLabel: z.string().min(1).max(120),
+  custodian: z.string().max(80).optional().nullable(),
+  accountNumberLast4: z.string().regex(/^\d{0,4}$/).optional().nullable(),
+  interestRateBps: z.coerce.number().int().min(0).max(50000).optional().nullable(),
+  propertyAddress: z.string().max(200).optional().nullable(),
+  archived: z.boolean().default(false),
+});
+
+export const updateClientSchema = z
+  .object({
+    householdName: z.string().min(1).max(120),
+    isMarried: z.boolean(),
+    persons: z.array(personSchema).min(1).max(2),
+    monthlyInflow: moneyString,
+    monthlyOutflow: moneyString,
+    floor: moneyString.optional(),
+    insuranceDeductibles: z.array(deductibleSchema).default([]),
+    accountEdits: z.array(accountEditSchema).default([]),
+    newAccounts: z.array(accountInputSchema).default([]),
+  })
+  .superRefine((val, ctx) => {
+    if (val.isMarried && val.persons.length !== 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["persons"],
+        message: "Married households must have two persons",
+      });
+    }
+    if (!val.isMarried && val.persons.length !== 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["persons"],
+        message: "Single households must have exactly one person",
+      });
+    }
+  });
+export type UpdateClientInput = z.infer<typeof updateClientSchema>;
+
 export const createSnapshotSchema = z.object({
   clientId: z.string().min(1),
   meetingDate: z.string().refine((s) => !Number.isNaN(Date.parse(s))),

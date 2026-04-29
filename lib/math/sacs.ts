@@ -1,4 +1,4 @@
-// SRS §6.2 — SACS calculation engine. Pure, deterministic, integer-only.
+// SRS §6.2 - SACS calculation engine. Pure, deterministic, integer-only.
 
 export type SacsInputs = {
   inflowCents: bigint;

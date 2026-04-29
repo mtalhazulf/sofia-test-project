@@ -65,6 +65,40 @@ export async function getSnapshot(id: string) {
   });
 }
 
+/**
+ * Returns the most recent FINALIZED snapshot strictly before this one
+ * (by fiscalYear, fiscalQuarter), for use as "last quarter" reference values.
+ * Falls back to the latest non-self snapshot if no finalized prior exists.
+ */
+export async function getPriorSnapshot(currentSnapshotId: string) {
+  const current = await prisma.quarterlySnapshot.findUnique({
+    where: { id: currentSnapshotId },
+    select: { clientId: true, fiscalYear: true, fiscalQuarter: true },
+  });
+  if (!current) return null;
+
+  const candidates = await prisma.quarterlySnapshot.findMany({
+    where: {
+      clientId: current.clientId,
+      id: { not: currentSnapshotId },
+      OR: [
+        { fiscalYear: { lt: current.fiscalYear } },
+        {
+          fiscalYear: current.fiscalYear,
+          fiscalQuarter: { lt: current.fiscalQuarter },
+        },
+      ],
+    },
+    orderBy: [{ fiscalYear: "desc" }, { fiscalQuarter: "desc" }],
+    take: 5,
+    include: { cashflow: true, balances: true, trustValues: true },
+  });
+  // Prefer the most recent finalized one; fall back to most recent draft.
+  return (
+    candidates.find((s) => s.status === "FINALIZED") ?? candidates[0] ?? null
+  );
+}
+
 export async function updateSnapshot(
   id: string,
   input: UpdateSnapshotInput,
@@ -123,7 +157,7 @@ export async function updateSnapshot(
     },
     { timeout: 30_000, maxWait: 30_000 },
   ).then(async () => {
-    // Audit log written outside the tx — SQLite serializes connections, so a
+    // Audit log written outside the tx - SQLite serializes connections, so a
     // second client.create() inside an open interactive tx self-deadlocks.
     await writeAudit({
       actorId,

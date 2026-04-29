@@ -1,9 +1,24 @@
 import * as React from "react";
 import { formatUSD } from "@/lib/math/money";
 
+export type TccPersonInfo = {
+  name: string;
+  dateOfBirthIso?: string | null;
+  age?: number | null;
+  ssnLast4?: string | null;
+};
+
 export type TccChartData = {
-  spouse1: { name: string; retirementCents: bigint; accounts: TccAccountDisplay[] };
-  spouse2?: { name: string; retirementCents: bigint; accounts: TccAccountDisplay[] };
+  spouse1: {
+    info: TccPersonInfo;
+    retirementCents: bigint;
+    accounts: TccAccountDisplay[];
+  };
+  spouse2?: {
+    info: TccPersonInfo;
+    retirementCents: bigint;
+    accounts: TccAccountDisplay[];
+  };
   nonRetirementCents: bigint;
   nonRetirementAccounts: TccAccountDisplay[];
   trustCents: bigint;
@@ -17,11 +32,13 @@ export type TccAccountDisplay = {
   label: string;
   last4?: string | null;
   balanceCents: bigint;
+  cashBalanceCents?: bigint | null;
   rateBps?: number | null;
+  propertyAddress?: string | null;
 };
 
 const VB_W = 1100;
-const VB_H = 850;
+const VB_H = 880;
 
 export function TccCircle({
   data,
@@ -48,66 +65,71 @@ export function TccCircle({
         Total Client Chart · {period}
       </text>
 
-      {/* Three primary buckets */}
+      {/* Spouse retirement buckets */}
       <Bucket
         cx={250}
-        cy={240}
+        cy={250}
         r={110}
         fill="#1F4E79"
-        title={data.spouse1.name + " Retirement"}
+        info={data.spouse1.info}
+        sectionTitle="Retirement"
         value={formatUSD(data.spouse1.retirementCents)}
         accounts={data.spouse1.accounts}
       />
       {data.spouse2 ? (
         <Bucket
           cx={850}
-          cy={240}
+          cy={250}
           r={110}
           fill="#1565C0"
-          title={data.spouse2.name + " Retirement"}
+          info={data.spouse2.info}
+          sectionTitle="Retirement"
           value={formatUSD(data.spouse2.retirementCents)}
           accounts={data.spouse2.accounts}
         />
       ) : null}
+
+      {/* Non-retirement (joint, bottom) */}
       <Bucket
         cx={550}
-        cy={500}
+        cy={530}
         r={110}
         fill="#2E7D32"
-        title="Non-Retirement"
+        sectionTitle="Non-Retirement"
         value={formatUSD(data.nonRetirementCents)}
         accounts={data.nonRetirementAccounts}
       />
 
-      {/* Trust */}
+      {/* Trust (center-left) */}
       <Bucket
         cx={250}
-        cy={500}
+        cy={530}
         r={90}
         fill="#6B8E23"
-        title="Trust"
+        sectionTitle="Trust"
         value={formatUSD(data.trustCents)}
         accounts={data.trustAccounts}
+        showAddress
       />
 
       {/* Grand total banner */}
-      <rect x={310} y={680} width={480} height={70} rx={8} fill="#0F172A" />
-      <text x={550} y={710} textAnchor="middle" fontSize={16} fill="#94A3B8">
+      <rect x={310} y={730} width={480} height={70} rx={8} fill="#0F172A" />
+      <text x={550} y={760} textAnchor="middle" fontSize={16} fill="#94A3B8">
         Grand Total Net Worth
       </text>
-      <text x={550} y={738} textAnchor="middle" fontSize={28} fontWeight={700} fill="#FFFFFF">
+      <text x={550} y={788} textAnchor="middle" fontSize={28} fontWeight={700} fill="#FFFFFF">
         {formatUSD(data.grandTotalNetWorthCents)}
       </text>
 
       {/* Liabilities (separate; per SRS, never subtracted from net worth) */}
-      <text x={840} y={580} textAnchor="middle" fontSize={14} fontWeight={600} fill="#C62828">
+      <text x={870} y={580} textAnchor="middle" fontSize={14} fontWeight={600} fill="#C62828">
         Liabilities (displayed separately)
       </text>
-      <text x={840} y={605} textAnchor="middle" fontSize={20} fontWeight={700} fill="#C62828">
+      <text x={870} y={605} textAnchor="middle" fontSize={20} fontWeight={700} fill="#C62828">
         {formatUSD(data.liabilitiesTotalCents)}
       </text>
       {data.liabilities.slice(0, 4).map((l, i) => (
-        <text key={i} x={840} y={630 + i * 18} textAnchor="middle" fontSize={11} fill="#475569">
+        <text key={i} x={870} y={630 + i * 18} textAnchor="middle" fontSize={11} fill="#475569">
           {l.label}
           {l.rateBps != null ? ` (${(l.rateBps / 100).toFixed(2)}%)` : ""}
           {" · "}
@@ -123,42 +145,107 @@ function Bucket({
   cy,
   r,
   fill,
-  title,
+  info,
+  sectionTitle,
   value,
   accounts,
+  showAddress,
 }: {
   cx: number;
   cy: number;
   r: number;
   fill: string;
-  title: string;
+  info?: TccPersonInfo;
+  sectionTitle: string;
   value: string;
   accounts: TccAccountDisplay[];
+  showAddress?: boolean;
 }) {
+  const dobShort = info?.dateOfBirthIso
+    ? formatDob(info.dateOfBirthIso)
+    : null;
   return (
     <g>
-      <circle cx={cx} cy={cy} r={r} fill={fill} opacity={0.9} />
-      <text x={cx} y={cy - 8} textAnchor="middle" fontSize={14} fill="#FFFFFF" fontWeight={500}>
-        {title}
-      </text>
-      <text x={cx} y={cy + 22} textAnchor="middle" fontSize={20} fill="#FFFFFF" fontWeight={700}>
-        {value}
-      </text>
-      {accounts.slice(0, 4).map((a, i) => (
-        <text
-          key={i}
-          x={cx}
-          y={cy + r + 22 + i * 16}
-          textAnchor="middle"
-          fontSize={11}
-          fill="#1F2937"
-        >
-          {a.label}
-          {a.last4 ? ` ····${a.last4}` : ""}
-          {" — "}
-          {formatUSD(a.balanceCents)}
-        </text>
-      ))}
+      <circle cx={cx} cy={cy} r={r} fill={fill} opacity={0.92} />
+      {info ? (
+        <>
+          <text x={cx} y={cy - 28} textAnchor="middle" fontSize={15} fill="#FFFFFF" fontWeight={600}>
+            {info.name}
+          </text>
+          <text x={cx} y={cy - 10} textAnchor="middle" fontSize={10} fill="#FFFFFFCC">
+            {[
+              info.age != null ? `Age ${info.age}` : null,
+              dobShort ? `DOB ${dobShort}` : null,
+              info.ssnLast4 ? `SSN ····${info.ssnLast4}` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </text>
+          <text x={cx} y={cy + 8} textAnchor="middle" fontSize={11} fill="#FFFFFFCC">
+            {sectionTitle}
+          </text>
+          <text x={cx} y={cy + 30} textAnchor="middle" fontSize={20} fill="#FFFFFF" fontWeight={700}>
+            {value}
+          </text>
+        </>
+      ) : (
+        <>
+          <text x={cx} y={cy - 8} textAnchor="middle" fontSize={14} fill="#FFFFFF" fontWeight={500}>
+            {sectionTitle}
+          </text>
+          <text x={cx} y={cy + 22} textAnchor="middle" fontSize={20} fill="#FFFFFF" fontWeight={700}>
+            {value}
+          </text>
+        </>
+      )}
+      {accounts.slice(0, 4).map((a, i) => {
+        const lines: string[] = [];
+        const head = `${a.label}${a.last4 ? ` ····${a.last4}` : ""} - ${formatUSD(a.balanceCents)}`;
+        lines.push(head);
+        if (a.cashBalanceCents != null) {
+          lines.push(`cash: ${formatUSD(a.cashBalanceCents)}`);
+        }
+        if (showAddress && a.propertyAddress) {
+          lines.push(a.propertyAddress);
+        }
+        return (
+          <g key={i}>
+            {lines.map((line, k) => (
+              <text
+                key={k}
+                x={cx}
+                y={cy + r + 22 + i * 28 + k * 12}
+                textAnchor="middle"
+                fontSize={k === 0 ? 11 : 10}
+                fill={k === 0 ? "#1F2937" : "#475569"}
+              >
+                {line}
+              </text>
+            ))}
+          </g>
+        );
+      })}
     </g>
   );
+}
+
+function formatDob(iso: string): string {
+  // "yyyy-MM-dd" or full ISO -> "MMM yyyy"
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  return `${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }

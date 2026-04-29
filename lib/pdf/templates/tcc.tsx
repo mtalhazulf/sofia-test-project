@@ -36,9 +36,9 @@ export async function renderTccHtml(args: {
           </section>
           <footer>
             <span>Prepared {args.preparedDate}</span>
-            <span>Confidential — Windbrook Solutions</span>
+            <span> - Windbrook Solutions</span>
             <span className="watermark">
-              V1 layout — approximate; pending source-template parity sign-off
+              V1 layout - approximate; pending source-template parity sign-off
             </span>
           </footer>
         </main>

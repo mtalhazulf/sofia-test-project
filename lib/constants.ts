@@ -29,7 +29,7 @@ export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   retirement_pension: "Pension",
   non_retirement_brokerage: "Brokerage",
   non_retirement_joint: "Joint Brokerage",
-  trust_residence: "Trust — Residence",
+  trust_residence: "Trust - Residence",
   liability_mortgage: "Mortgage",
   liability_auto: "Auto Loan",
   liability_credit_card: "Credit Card",

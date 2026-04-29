@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "──────────────────────────────────────────────────"
-echo "  AW Client Report Portal — local setup"
+echo "  AW Client Report Portal - local setup"
 echo "──────────────────────────────────────────────────"
 
 # 1. .env file
@@ -22,7 +22,7 @@ if [ ! -f .env ]; then
     fi
     echo "✓ Generated AUTH_SECRET in .env"
   else
-    echo "⚠ openssl not found — please edit .env and set AUTH_SECRET manually"
+    echo "⚠ openssl not found - please edit .env and set AUTH_SECRET manually"
   fi
 else
   echo "✓ .env already exists (left untouched)"
@@ -30,13 +30,13 @@ fi
 
 # 2. Prisma migrate + generate
 echo "→ Running prisma migrate deploy…"
-pnpm prisma migrate deploy
+bunx prisma migrate deploy
 echo "→ Generating Prisma client…"
-pnpm prisma generate
+bunx prisma generate
 
-# 3. Seed (idempotent — sample client insert is gated)
+# 3. Seed (idempotent - sample client insert is gated)
 echo "→ Seeding database…"
-pnpm db:seed
+bun run db:seed
 
 # 4. Puppeteer Chromium
 if [ ! -d "$HOME/.cache/puppeteer/chrome" ]; then

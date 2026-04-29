@@ -1,4 +1,4 @@
-// SRS §6.3 — TCC calculation engine.
+// SRS §6.3 - TCC calculation engine.
 //
 // Critical invariant (SRS §6.3 callout, FR-405, AT-7):
 //   Liabilities are NEVER subtracted from grandTotalNetWorthCents.

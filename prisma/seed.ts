@@ -73,7 +73,7 @@ async function main() {
         type: "retirement_roth_ira",
         custodian: "Schwab",
         accountNumberLast4: "9001",
-        displayLabel: "Roth IRA — Alex",
+        displayLabel: "Roth IRA - Alex",
       },
       {
         clientId: client.id,
@@ -82,7 +82,7 @@ async function main() {
         type: "retirement_401k",
         custodian: "Fidelity",
         accountNumberLast4: "9002",
-        displayLabel: "401(k) — Alex",
+        displayLabel: "401(k) - Alex",
       },
       {
         clientId: client.id,
@@ -91,7 +91,7 @@ async function main() {
         type: "retirement_ira",
         custodian: "Schwab",
         accountNumberLast4: "9003",
-        displayLabel: "IRA — Jordan",
+        displayLabel: "IRA - Jordan",
       },
       {
         clientId: client.id,
@@ -117,7 +117,7 @@ async function main() {
         type: "liability_mortgage",
         custodian: "Pinnacle Bank",
         accountNumberLast4: "9200",
-        displayLabel: "Mortgage — Primary",
+        displayLabel: "Mortgage - Primary",
         interestRateBps: 525, // 5.25%
       },
     ],

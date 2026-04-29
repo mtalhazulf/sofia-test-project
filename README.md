@@ -30,26 +30,56 @@ The math engine (`lib/math/{sacs,tcc,money}.ts`) is pure, integer-cents,
 deterministic, and 100%-tested (36 cases) — including the SRS-critical
 regression that **liabilities are never subtracted from grand total net worth**.
 
-## Running locally
+## Local setup — quickstart
+
+**Prerequisites**: Node 20+ (22 recommended), [pnpm](https://pnpm.io/installation), `openssl` (for AUTH_SECRET generation).
 
 ```bash
+git clone https://github.com/mtalhazulf/sofia-test-project.git
+cd sofia-test-project
 pnpm install
-cp .env.example .env       # keep AUTH_SECRET secret in real use
-pnpm prisma migrate dev    # create dev.db
-pnpm db:seed               # creates admin@example.com / admin1234 + sample household
-pnpm dev                   # http://localhost:3000
+pnpm setup        # creates .env with a random AUTH_SECRET, migrates, seeds, downloads Chromium
+pnpm dev          # http://localhost:3000
 ```
 
-Sign in: `admin@example.com` / `admin1234`.
+Sign in: **admin@example.com** / **admin1234** (seeded — change in production).
 
-If Puppeteer's Chromium isn't installed yet, run:
+That's it. `pnpm setup` is idempotent — safe to re-run any time.
+
+### Linux: Chromium system libraries
+
+If Puppeteer fails to launch on a fresh Linux box, install the system libs Chromium needs:
 
 ```bash
-npx puppeteer browsers install chrome
+sudo apt-get install -y \
+  libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 \
+  libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 \
+  libcairo2 libasound2
 ```
 
-On a fresh Linux container Chromium also needs:
-`libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2`.
+macOS and Windows do not need this step.
+
+### Manual setup (if `pnpm setup` doesn't fit your environment)
+
+```bash
+cp .env.example .env
+# edit .env and replace AUTH_SECRET — generate one with: openssl rand -base64 32
+pnpm prisma migrate deploy
+pnpm prisma generate
+pnpm db:seed
+npx puppeteer browsers install chrome   # ~150 MB
+pnpm dev
+```
+
+### Common scripts
+
+| Command | Purpose |
+|---|---|
+| `pnpm dev` | Dev server with hot reload |
+| `pnpm build && pnpm start` | Production build + serve |
+| `pnpm test` | Run the 36-case math test suite |
+| `pnpm db:reset` | Drop + recreate dev.db, then re-seed |
+| `pnpm prisma studio` | Browse/edit DB rows in a web UI |
 
 ## Tests
 

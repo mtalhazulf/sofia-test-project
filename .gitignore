@@ -1,0 +1,27 @@
+node_modules
+.next
+out
+dist
+*.log
+.DS_Store
+
+# env
+.env
+.env.local
+.env.*.local
+
+# database
+prisma/dev.db
+prisma/dev.db-journal
+*.sqlite
+*.sqlite-journal
+
+# generated PDFs
+storage/
+
+# tooling
+.vscode
+.idea
+coverage
+.tsbuildinfo
+next-env.d.ts

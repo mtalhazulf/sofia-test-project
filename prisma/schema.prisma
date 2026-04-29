@@ -1,0 +1,191 @@
+// AW Client Report Portal — Prisma schema
+// SRS §5 data model. Money stored as BigInt cents.
+//
+// Stack note: SQLite for V1 dev (no external DB needed). To switch to Postgres
+// for production, change `provider` to "postgresql" and `DATABASE_URL` — the
+// schema is provider-portable (no native enums; all amounts are BigInt).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  Auth (NextAuth v5 / Auth.js Prisma adapter shape, trimmed)
+// ──────────────────────────────────────────────────────────────────────────
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String?
+  passwordHash   String
+  role           String    @default("staff") // 'staff' | 'admin'
+  createdAt      DateTime  @default(now())
+  finalizedSnaps QuarterlySnapshot[] @relation("FinalizedBy")
+  audits         AuditLog[]
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  Domain entities
+// ──────────────────────────────────────────────────────────────────────────
+model Client {
+  id             String    @id @default(cuid())
+  householdName  String
+  isMarried      Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  archivedAt     DateTime?
+
+  persons        Person[]
+  accounts       Account[]
+  staticProfile  StaticFinancialProfile?
+  snapshots      QuarterlySnapshot[]
+
+  @@index([archivedAt])
+}
+
+model Person {
+  id           String   @id @default(cuid())
+  clientId     String
+  spouseIndex  Int      // 1 or 2 (validated in Zod)
+  firstName    String
+  lastName     String
+  dateOfBirth  DateTime
+  ssnLast4     String   // exactly 4 digits, validated in Zod
+
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  ownedAccounts Account[]
+
+  @@unique([clientId, spouseIndex])
+}
+
+// account.category: 'retirement' | 'non_retirement' | 'trust' | 'liability'
+// account.type:     'retirement_ira' | 'retirement_roth_ira' | 'retirement_401k'
+//                   | 'retirement_pension' | 'non_retirement_brokerage'
+//                   | 'non_retirement_joint' | 'trust_residence'
+//                   | 'liability_mortgage' | 'liability_auto'
+//                   | 'liability_credit_card'
+model Account {
+  id                     String   @id @default(cuid())
+  clientId               String
+  ownerPersonId          String?  // null = joint
+  category               String
+  type                   String
+  custodian              String?
+  accountNumberLast4     String?
+  displayLabel           String
+  interestRateBps        Int?     // liabilities only
+  propertyAddress        String?  // trust_residence only
+  createdAt              DateTime @default(now())
+  archivedAt             DateTime?
+
+  client                 Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  owner                  Person?  @relation(fields: [ownerPersonId], references: [id])
+  balances               SnapshotAccountBalance[]
+  trustValues            SnapshotTrustValue[]
+
+  @@index([clientId])
+  @@index([clientId, category])
+}
+
+model StaticFinancialProfile {
+  clientId             String   @id
+  monthlyInflowCents   BigInt
+  monthlyOutflowCents  BigInt
+  insuranceDeductibles String   @default("[]") // JSON: [{label, amountCents}]
+  floorCents           BigInt   @default(100000) // $1,000
+  updatedAt            DateTime @updatedAt
+
+  client               Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+// status: 'DRAFT' | 'FINALIZED' (validated server-side)
+model QuarterlySnapshot {
+  id              String    @id @default(cuid())
+  clientId        String
+  meetingDate     DateTime
+  fiscalYear      Int
+  fiscalQuarter   Int       // 1..4
+  status          String    @default("DRAFT")
+  finalizedAt     DateTime?
+  finalizedById   String?
+  createdAt       DateTime  @default(now())
+
+  client          Client    @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  finalizedBy     User?     @relation("FinalizedBy", fields: [finalizedById], references: [id])
+  balances        SnapshotAccountBalance[]
+  cashflow        SnapshotCashflow?
+  trustValues     SnapshotTrustValue[]
+  reports         Report[]
+
+  @@unique([clientId, fiscalYear, fiscalQuarter])
+  @@index([clientId])
+  @@index([status])
+}
+
+model SnapshotAccountBalance {
+  snapshotId       String
+  accountId        String
+  balanceCents     BigInt
+  cashBalanceCents BigInt?
+
+  snapshot         QuarterlySnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  account          Account           @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@id([snapshotId, accountId])
+}
+
+model SnapshotCashflow {
+  snapshotId                    String  @id
+  inflowCents                   BigInt
+  outflowCents                  BigInt
+  privateReserveBalanceCents    BigInt
+  schwabInvestmentBalanceCents  BigInt?
+
+  snapshot                      QuarterlySnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+}
+
+model SnapshotTrustValue {
+  snapshotId       String
+  accountId        String
+  zillowValueCents BigInt
+  zillowPulledAt   DateTime?
+
+  snapshot         QuarterlySnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  account          Account           @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@id([snapshotId, accountId])
+}
+
+// kind: 'SACS' | 'TCC'
+model Report {
+  id              String   @id @default(cuid())
+  snapshotId      String
+  kind            String
+  storagePath     String
+  generatedAt     DateTime @default(now())
+  generatedById   String?
+  computedTotals  String   // JSON; SRS §7.7 audit trail
+
+  snapshot        QuarterlySnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@unique([snapshotId, kind])
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  actorId     String
+  action      String   // 'client.create' etc.
+  entityType  String
+  entityId    String
+  payload     String?  // JSON
+  occurredAt  DateTime @default(now())
+
+  actor       User     @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([occurredAt])
+}

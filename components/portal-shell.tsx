@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Users, FileText, BarChart3, LogOut, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Monogram } from "@/components/ui/monogram";
+import { signOutAction } from "@/app/(app)/actions";
 
 const NAV = [
   { href: "/clients", label: "Clients", icon: Users },
@@ -105,7 +106,7 @@ export function PortalShell({
             </div>
             <div className="text-[0.6875rem] text-ink-mute">Administrator</div>
           </div>
-          <form action="/api/auth/signout" method="post">
+          <form action={signOutAction}>
             <button
               type="submit"
               className="h-7 w-7 grid place-items-center rounded-md text-ink-mute hover:bg-elevated hover:text-ink transition-colors focus-ring"
